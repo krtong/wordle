@@ -1122,13 +1122,18 @@ function updateTileTooltip(tile, state) {
 }
 
 function cycleState(tile) {
+    // Don't cycle color on empty tiles
+    if (!tile.textContent.trim()) {
+        return;
+    }
+
     const currentState = tile.dataset.state;
     let newState;
-    
+
     // Check if this tile is in a row with manual entries
     const row = parseInt(tile.dataset.row);
     const isInManualRow = checkIfRowHasManualEntries(row);
-    
+
     switch (currentState) {
         case STATES.GRAY:
             newState = STATES.YELLOW;
@@ -3491,14 +3496,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function hasAnyLettersEntered() {
+        return tiles.some(tile => tile.textContent.trim().length > 0);
+    }
+
     if (blendSliderInput) {
-        // Update visuals while dragging (no recalculation)
         blendSliderInput.addEventListener('input', (e) => {
-            syncBlendInputs(parseInt(e.target.value));
+            const value = parseInt(e.target.value);
+            syncBlendInputs(value);
+            // If letters are entered, update live while dragging
+            if (hasAnyLettersEntered()) {
+                updateBlendFromValue(value);
+            }
         });
-        // Recalculate only when slider is released
+        // Recalculate when slider is released (for when no letters entered)
         blendSliderInput.addEventListener('change', (e) => {
-            updateBlendFromValue(parseInt(e.target.value));
+            if (!hasAnyLettersEntered()) {
+                updateBlendFromValue(parseInt(e.target.value));
+            }
         });
     }
 
