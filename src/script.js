@@ -789,15 +789,17 @@ function handleKeyDown(e, tile) {
     } else if (e.key === '1') {
         // Set tile to gray
         e.preventDefault();
-        tile.classList.remove('yellow', 'green');
-        tile.classList.add('gray');
-        tile.dataset.state = STATES.GRAY;
-        filterWords();
-        updateGhostHints();
+        if (tile.textContent.trim()) {
+            tile.classList.remove('yellow', 'green');
+            tile.classList.add('gray');
+            tile.dataset.state = STATES.GRAY;
+            filterWords();
+            updateGhostHints();
+        }
     } else if (e.key === '2') {
         // Set tile to yellow
         e.preventDefault();
-        if (tile.textContent) {
+        if (tile.textContent.trim()) {
             tile.classList.remove('gray', 'green');
             tile.classList.add('yellow');
             tile.dataset.state = STATES.YELLOW;
@@ -807,7 +809,7 @@ function handleKeyDown(e, tile) {
     } else if (e.key === '3') {
         // Set tile to green
         e.preventDefault();
-        if (tile.textContent) {
+        if (tile.textContent.trim()) {
             tile.classList.remove('gray', 'yellow');
             tile.classList.add('green');
             tile.dataset.state = STATES.GREEN;
