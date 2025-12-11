@@ -180,6 +180,11 @@
                         <p>Drag any pattern below into the art grid rows to create your design.</p>
                     </div>
                     <div class="art-controls">
+                        <div class="answer-controls">
+                            <label>Correct answer:</label>
+                            <input type="text" id="correctWord" class="answer-input" placeholder="Enter answer" maxlength="5">
+                            <button id="clearAnswer" class="small-btn">Clear</button>
+                        </div>
                         <button id="clearArt" class="small-btn">Clear Art Grid</button>
                     </div>
                     <div class="art-planner-layout">
@@ -218,23 +223,6 @@
                             <div class="art-row-label">Row 6</div>
                             <div id="artResultsRow5" class="art-row-suggestions"></div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="widget-section draggable collapsed" data-widget="answer">
-                <div class="widget-header">
-                    <h3>Answer Helper</h3>
-                    <div class="widget-controls">
-                        <button class="drag-handle">☰</button>
-                        <button class="collapse-btn">+</button>
-                    </div>
-                </div>
-                <div class="widget-content">
-                    <div class="answer-controls">
-                        <label>Correct answer:</label>
-                        <input type="text" id="correctWord" class="answer-input" placeholder="Enter answer" maxlength="5">
-                        <button id="clearAnswer" class="small-btn">Clear</button>
                     </div>
                 </div>
             </div>
