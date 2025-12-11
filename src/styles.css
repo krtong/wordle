@@ -23,30 +23,24 @@ body {
     margin-bottom: 20px;
 }
 
-/* Ad Placeholder */
-.ad-placeholder {
+/* Ad Container */
+.ad-container {
     width: 160px;
-    height: 400px;
-    background: rgba(30, 30, 30, 0.8);
-    border: 2px dashed rgba(100, 100, 100, 0.5);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    min-height: 400px;
     flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
 }
 
-.ad-label {
-    color: rgba(100, 100, 100, 0.6);
-    font-family: 'Courier New', monospace;
-    font-size: 24px;
-    font-weight: bold;
-    letter-spacing: 4px;
+.ad-container .adsbygoogle {
+    width: 160px;
+    height: 400px;
 }
 
 /* Hide ad when viewport is too narrow */
 @media (max-width: 900px) {
-    .ad-placeholder {
+    .ad-container {
         display: none;
     }
 }
