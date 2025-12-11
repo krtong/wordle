@@ -303,13 +303,49 @@ function createGrid() {
             tile.contentEditable = true;
             tile.tabIndex = row * 5 + col;
             
-            // Track if tile was focused before mousedown
-            let wasFocusedBeforeMousedown = false;
-            
+            // Track if tile was focused before interaction
+            let wasFocusedBeforeInteraction = false;
+            let lastTouchTime = 0;
+
+            // Prevent iOS text selection on touch
+            tile.addEventListener('touchstart', (e) => {
+                wasFocusedBeforeInteraction = (document.activeElement === tile);
+                lastTouchTime = Date.now();
+
+                // If already focused, prevent default to avoid text selection
+                if (wasFocusedBeforeInteraction) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            tile.addEventListener('touchend', (e) => {
+                const touchDuration = Date.now() - lastTouchTime;
+
+                // Only handle quick taps (not long press)
+                if (touchDuration < 300) {
+                    if (wasFocusedBeforeInteraction) {
+                        // Already focused - cycle color
+                        e.preventDefault();
+                        cycleState(tile);
+                    } else {
+                        // First tap - focus and show keyboard
+                        e.preventDefault();
+                        tile.focus();
+                        // Move cursor to end
+                        const range = document.createRange();
+                        const sel = window.getSelection();
+                        range.selectNodeContents(tile);
+                        range.collapse(false);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                }
+            }, { passive: false });
+
             tile.addEventListener('mousedown', () => {
-                wasFocusedBeforeMousedown = (document.activeElement === tile);
+                wasFocusedBeforeInteraction = (document.activeElement === tile);
             });
-            
+
             // Event listeners
             tile.addEventListener('focus', () => {
                 currentTile = tile;
@@ -320,8 +356,13 @@ function createGrid() {
             tile.addEventListener('blur', () => {
                 tile.classList.remove('selected');
             });
-            
+
             tile.addEventListener('click', (e) => {
+                // Skip if this was a touch event (handled by touchend)
+                if (lastTouchTime && (Date.now() - lastTouchTime) < 500) {
+                    return;
+                }
+
                 if (e.ctrlKey || e.metaKey) {
                     // Ctrl/Cmd-click clears the tile (makes it blank and gray)
                     e.preventDefault();
@@ -335,7 +376,7 @@ function createGrid() {
                     // Shift-click always cycles colors
                     e.preventDefault();
                     cycleState(tile);
-                } else if (wasFocusedBeforeMousedown) {
+                } else if (wasFocusedBeforeInteraction) {
                     // Regular click cycles if already focused
                     e.preventDefault();
                     cycleState(tile);

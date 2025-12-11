@@ -367,12 +367,17 @@ h3 {
     text-transform: uppercase;
     cursor: pointer;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
     transition: all 0.2s ease;
     outline: none;
     background: rgba(0, 10, 20, 0.8);
     color: #00ff88;
     font-family: 'Courier New', monospace;
     box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05);
+    caret-color: #00ffff;
 }
 
 .tile.gray {
