@@ -2886,8 +2886,17 @@ function clearAll() {
     // Clear filter inputs
     document.getElementById('excludeLetters').value = '';
     document.getElementById('includeLetters').value = '';
+
+    // Clear per-position filter inputs
+    document.querySelectorAll('.position-input').forEach(input => {
+        input.value = '';
+    });
+    document.querySelectorAll('.position-include-input').forEach(input => {
+        input.value = '';
+    });
+
     // Don't clear correctWord - user may want to keep the answer while testing different guesses
-    
+
     setFilteredWords([...wordList]);
     updateWordDisplay();
     
@@ -3193,7 +3202,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         analyzeBoard();
     });
-    
+
+    // Add clear filters button for frequency widget
+    document.getElementById('clearFrequencyFilters').addEventListener('click', () => {
+        document.querySelectorAll('.position-input').forEach(input => {
+            input.value = '';
+        });
+        document.querySelectorAll('.position-include-input').forEach(input => {
+            input.value = '';
+        });
+        document.getElementById('excludeLetters').value = '';
+        document.getElementById('includeLetters').value = '';
+        analyzeBoard();
+    });
+
     // Add handlers for exclude green/yellow toggles
     document.getElementById('excludeGreenToggle').addEventListener('change', () => {
         analyzeBoard();
