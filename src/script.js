@@ -162,6 +162,7 @@ const STATES = {
 function setFilteredWords(newList) {
     filteredWords = newList;
     filteredWordsVersion++;
+    _partitionCache.clear();
 }
 
 function getScoreLabel(mode) {
@@ -315,7 +316,11 @@ function createGrid() {
             tile.dataset.state = STATES.GRAY;
             tile.contentEditable = true;
             tile.tabIndex = row * 5 + col;
-            
+            tile.inputMode = 'text';
+            tile.setAttribute('autocapitalize', 'characters');
+            tile.setAttribute('autocorrect', 'off');
+            tile.setAttribute('autocomplete', 'off');
+
             // Track if tile was focused before interaction
             let wasFocusedBeforeInteraction = false;
             let lastTouchTime = 0;
@@ -384,6 +389,10 @@ function createGrid() {
                     tile.classList.add('gray');
                     tile.dataset.state = STATES.GRAY;
                     delete tile.dataset.autofilled;
+                    delete tile.dataset.autofilledSolution;
+                    delete tile.dataset.manualEntry;
+                    delete tile.dataset.manualState;
+                    delete tile.dataset.autoColored;
                     filterWords();
                 } else if (e.shiftKey) {
                     // Shift-click always cycles colors
@@ -410,6 +419,32 @@ function createGrid() {
     // Focus first tile and highlight next input
     if (tiles[0]) {
         tiles[0].focus();
+
+        // On touch devices, set up a one-time touch handler to trigger keyboard
+        // The keyboard only appears when focus happens from a user gesture
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        if (isTouchDevice) {
+            const triggerKeyboard = (e) => {
+                // Only trigger if we're touching the grid area or it's the initial touch
+                const firstTile = tiles[0];
+                if (firstTile && document.activeElement !== firstTile) {
+                    // If user tapped elsewhere, focus the first empty tile
+                    const emptyTile = tiles.find(t => !t.textContent.trim());
+                    if (emptyTile) {
+                        emptyTile.focus();
+                    }
+                } else if (firstTile && !firstTile.textContent.trim()) {
+                    // Re-focus to trigger keyboard on touch
+                    firstTile.blur();
+                    setTimeout(() => {
+                        firstTile.focus();
+                    }, 10);
+                }
+                // Remove this one-time handler
+                document.removeEventListener('touchend', triggerKeyboard);
+            };
+            document.addEventListener('touchend', triggerKeyboard, { once: true });
+        }
     }
     highlightNextInput();
 }
@@ -843,7 +878,7 @@ function handleKeyDown(e, tile) {
             tiles[index + 1].focus();
         }
         analyzeBoard();
-    } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         if (tile.textContent === '') {
             // Move to previous tile if current is empty and delete it
@@ -855,6 +890,11 @@ function handleKeyDown(e, tile) {
                 prevTile.classList.remove('yellow', 'green');
                 prevTile.classList.add('gray');
                 prevTile.dataset.state = STATES.GRAY;
+                delete prevTile.dataset.autofilled;
+                delete prevTile.dataset.autofilledSolution;
+                delete prevTile.dataset.manualEntry;
+                delete prevTile.dataset.manualState;
+                delete prevTile.dataset.autoColored;
             }
         } else {
             tile.textContent = '';
@@ -862,6 +902,11 @@ function handleKeyDown(e, tile) {
             tile.classList.remove('yellow', 'green');
             tile.classList.add('gray');
             tile.dataset.state = STATES.GRAY;
+            delete tile.dataset.autofilled;
+            delete tile.dataset.autofilledSolution;
+            delete tile.dataset.manualEntry;
+            delete tile.dataset.manualState;
+            delete tile.dataset.autoColored;
         }
         analyzeBoard();
     } else if (e.key === 'ArrowLeft' && index > 0) {
@@ -3142,11 +3187,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.SettingsManager) {
         SettingsManager.init();
     }
+    autofillGreenEnabled = document.getElementById('autofillToggle').checked;
+    allowProbeGuesses = document.getElementById('allowProbeToggle').checked;
 
     // Sync visibility of filter sections with toggle state
     const perPositionMode = document.getElementById('perPositionToggle').checked;
     document.getElementById('wholeWordInputs').style.display = perPositionMode ? 'none' : 'block';
-    document.getElementById('perPositionInputs').style.display = perPositionMode ? 'block' : 'none';
+    document.getElementById('perPositionInputs').style.display = perPositionMode ? 'grid' : 'none';
 
     createGrid();
     loadWords();
@@ -3229,7 +3276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('perPositionToggle').addEventListener('change', (e) => {
         const perPositionMode = e.target.checked;
         document.getElementById('wholeWordInputs').style.display = perPositionMode ? 'none' : 'block';
-        document.getElementById('perPositionInputs').style.display = perPositionMode ? 'block' : 'none';
+        document.getElementById('perPositionInputs').style.display = perPositionMode ? 'grid' : 'none';
         analyzeBoard();
     });
     
@@ -3493,7 +3540,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addBlendBtn) {
         addBlendBtn.addEventListener('click', () => {
             addBlendRow();
-            renderBlendControls();
+            if (typeof renderBlendControls === 'function') {
+                renderBlendControls();
+            }
             if (currentScoreMode === 'blend') {
                 updateWordDisplay(true);
             }

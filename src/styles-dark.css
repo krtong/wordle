@@ -354,6 +354,37 @@ kbd {
   .grid-area {
     gap: 12px;
   }
+
+  /* Compact word table for narrow screens */
+  .words-table thead th,
+  .words-table tbody td {
+    padding: 8px 6px;
+  }
+
+  .word-rank {
+    width: 40px;
+  }
+
+  .word-score-cell {
+    width: 50px;
+  }
+
+  .word-action {
+    width: auto;
+  }
+
+  .word-letter {
+    width: 18px;
+    height: 22px;
+    margin-right: 2px;
+    border-radius: 6px;
+    font-size: 0.85em;
+  }
+
+  .use-word-btn {
+    padding: 5px 8px;
+    font-size: 0.85em;
+  }
 }
 
 .tile:hover {
@@ -973,6 +1004,10 @@ button {
   text-align: right;
 }
 
+.word-text {
+  white-space: nowrap;
+}
+
 .word-letter {
   display: inline-flex;
   align-items: center;
@@ -1409,12 +1444,16 @@ button {
 /* Filter widget */
 .filter-controls {
   display: grid;
-  gap: 12px;
+  gap: 16px;
+}
+
+.filter-group {
+  display: grid;
+  gap: 10px;
 }
 
 .filter-group label:not(.toggle-label) {
   display: block;
-  margin-bottom: 6px;
   color: var(--text-2);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1423,12 +1462,13 @@ button {
 }
 
 .filter-input {
-  width: min(360px, 100%);
+  width: 100%;
   border-radius: 12px;
-  padding: 9px 10px;
+  padding: 12px 14px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-0);
+  font-size: 1rem;
 }
 
 .filter-input:focus-visible {
@@ -1438,22 +1478,24 @@ button {
 
 .position-inputs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  margin: 8px 0 10px;
-  max-width: 360px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
 }
 
 .position-input,
 .position-include-input {
-  border-radius: 12px;
-  padding: 9px 10px;
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 80px;
+  border-radius: 14px;
+  padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-0);
   text-transform: uppercase;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  letter-spacing: 0.08em;
   text-align: center;
 }
 
@@ -1461,6 +1503,18 @@ button {
 .position-include-input:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+#perPositionInputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 600px) {
+  #perPositionInputs {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Reduced motion */
