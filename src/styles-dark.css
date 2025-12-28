@@ -229,7 +229,8 @@ kbd {
   color: var(--text-0);
 }
 
-.help-icon-container:hover .help-tooltip {
+.help-icon-container:hover .help-tooltip,
+.help-icon-container.active .help-tooltip {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
