@@ -418,116 +418,62 @@ function createGrid() {
     
     // Focus first tile and highlight next input
     if (tiles[0]) {
-        // On touch devices, create a transparent input overlay to trigger keyboard
+        // On touch devices, create a small input overlay on first tile to trigger keyboard
         // iOS only shows keyboard when user directly taps an input element
         const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         if (isTouchDevice) {
-            const gridArea = document.querySelector('.grid-area');
-            if (gridArea) {
-                const overlay = document.createElement('input');
-                overlay.type = 'text';
-                overlay.className = 'keyboard-trigger-overlay';
-                overlay.setAttribute('autocapitalize', 'characters');
-                overlay.setAttribute('autocorrect', 'off');
-                overlay.setAttribute('autocomplete', 'off');
-                overlay.inputMode = 'text';
-                overlay.placeholder = 'Tap to start typing...';
+            const firstTile = tiles[0];
+            const overlay = document.createElement('input');
+            overlay.type = 'text';
+            overlay.className = 'keyboard-trigger-overlay';
+            overlay.setAttribute('autocapitalize', 'characters');
+            overlay.setAttribute('autocorrect', 'off');
+            overlay.setAttribute('autocomplete', 'off');
+            overlay.inputMode = 'text';
 
-                // Style inline to ensure it works
-                Object.assign(overlay.style, {
-                    position: 'absolute',
-                    top: '0',
-                    left: '0',
-                    width: '100%',
-                    height: '100%',
-                    background: 'rgba(94, 234, 212, 0.08)',
-                    border: '2px dashed rgba(94, 234, 212, 0.4)',
-                    borderRadius: '16px',
-                    zIndex: '10',
-                    fontSize: '16px', // Prevents iOS zoom on focus
-                    color: 'transparent',
-                    caretColor: 'transparent',
-                    textAlign: 'center',
-                    cursor: 'text'
-                });
+            // Position overlay exactly over the first tile
+            Object.assign(overlay.style, {
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                background: 'transparent',
+                border: 'none',
+                zIndex: '10',
+                fontSize: '16px', // Prevents iOS zoom
+                color: 'transparent',
+                caretColor: 'transparent',
+                cursor: 'text'
+            });
 
-                gridArea.style.position = 'relative';
-                gridArea.appendChild(overlay);
+            firstTile.style.position = 'relative';
+            firstTile.appendChild(overlay);
 
-                // Add visible prompt
-                const prompt = document.createElement('div');
-                prompt.className = 'tap-prompt';
-                prompt.textContent = 'Tap here to start typing';
-                Object.assign(prompt.style, {
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    color: 'rgba(94, 234, 212, 0.9)',
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase',
-                    pointerEvents: 'none',
-                    zIndex: '11',
-                    textShadow: '0 2px 8px rgba(0,0,0,0.5)'
-                });
-                gridArea.appendChild(prompt);
+            const removeOverlay = () => {
+                if (overlay.parentNode) overlay.remove();
+            };
 
-                // Try to trigger keyboard programmatically
-                // Note: iOS blocks this for security, but we try anyway
-                setTimeout(() => {
-                    overlay.focus();
-                    overlay.click();
-                    overlay.select();
-                    // Try setSelectionRange as another approach
-                    try {
-                        overlay.setSelectionRange(0, 0);
-                    } catch (e) {}
-                }, 100);
-
-                const removeOverlay = () => {
-                    if (overlay.parentNode) overlay.remove();
-                    if (prompt.parentNode) prompt.remove();
-                };
-
-                // When user taps and types, proxy to first tile
-                overlay.addEventListener('input', (e) => {
-                    const char = e.target.value.slice(-1).toUpperCase();
-                    if (/^[A-Z]$/.test(char)) {
-                        const firstEmpty = tiles.find(t => !t.textContent.trim());
-                        if (firstEmpty) {
-                            firstEmpty.textContent = char;
-                            firstEmpty.focus();
-                            // Trigger the input handler
-                            const inputEvent = new Event('input', { bubbles: true });
-                            firstEmpty.dispatchEvent(inputEvent);
-                        }
-                    }
+            // When user types, put character in tile and remove overlay
+            overlay.addEventListener('input', (e) => {
+                const char = e.target.value.slice(-1).toUpperCase();
+                if (/^[A-Z]$/.test(char)) {
+                    firstTile.textContent = char;
                     removeOverlay();
-                });
+                    // Trigger the tile's input handler
+                    const inputEvent = new Event('input', { bubbles: true });
+                    firstTile.dispatchEvent(inputEvent);
+                } else {
+                    overlay.value = '';
+                }
+            });
 
-                // Also remove on blur (user tapped elsewhere)
-                overlay.addEventListener('blur', () => {
-                    setTimeout(() => {
-                        if (document.body.contains(overlay)) {
-                            removeOverlay();
-                            tiles[0].focus();
-                        }
-                    }, 100);
-                });
-
-                // Remove on any touch/click on the overlay (even without typing)
-                overlay.addEventListener('focus', () => {
-                    // Once focused, user can type - keyboard should be visible
-                    // Add a brief delay then check if they started typing
-                    setTimeout(() => {
-                        if (overlay.value === '') {
-                            // They focused but didn't type, keep overlay but they can now type
-                        }
-                    }, 500);
-                });
-            }
+            // Remove overlay if user taps elsewhere
+            overlay.addEventListener('blur', () => {
+                setTimeout(() => {
+                    removeOverlay();
+                }, 50);
+            });
         } else {
             // Desktop: just focus the first tile
             tiles[0].focus();
