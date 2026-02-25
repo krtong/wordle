@@ -31,6 +31,23 @@
 
                 <div class="controls">
                     <button id="clearBtn" class="clear-btn">Clear All</button>
+                    <div class="length-control">
+                        <label class="length-label" for="wordLengthSelect">Word length</label>
+                        <select id="wordLengthSelect" class="length-select">
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5" selected>5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                        </select>
+                    </div>
+                    <div class="length-control">
+                        <label class="length-label" for="solveModeSelect">Mode</label>
+                        <select id="solveModeSelect" class="length-select">
+                            <option value="normal" selected>Normal</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
                     <div class="autofill-toggle">
                         <label class="toggle-label">
                             <input type="checkbox" id="autofillToggle">
@@ -39,23 +56,28 @@
                         </label>
                     </div>
                 </div>
+                <div id="modeMessage" class="mode-message" style="display: none;" aria-live="polite"></div>
             </div>
 
-            <div class="constraints-digest" id="constraintsDigest">
-                <div class="constraint-row">
-                    <span class="constraint-label">Excluded:</span>
-                    <span class="constraint-letters gray-letters" id="excludedLetters">—</span>
-                </div>
-                <div class="constraint-row">
-                    <span class="constraint-label">Present:</span>
-                    <span class="constraint-letters yellow-letters" id="presentLetters">—</span>
-                </div>
-                <div class="constraint-row">
-                    <span class="constraint-label">Locked:</span>
-                    <span class="constraint-letters green-letters" id="lockedLetters">—</span>
-                </div>
+        <div class="constraints-digest" id="constraintsDigest">
+            <div class="constraint-row">
+                <span class="constraint-label">Excluded:</span>
+                <span class="constraint-letters gray-letters" id="excludedLetters">—</span>
+            </div>
+            <div class="constraint-row">
+                <span class="constraint-label">Present:</span>
+                <span class="constraint-letters yellow-letters" id="presentLetters">—</span>
+            </div>
+            <div class="constraint-row">
+                <span class="constraint-label">Locked:</span>
+                <span class="constraint-letters green-letters" id="lockedLetters">—</span>
+            </div>
+            <div class="constraint-row">
+                <span class="constraint-label">Lists:</span>
+                <span class="constraint-meta" id="listCounts">—</span>
             </div>
         </div>
+    </div>
 
         <div class="widgets-container" id="widgetsContainer">
             <div class="widget-section draggable" data-widget="frequency">
@@ -137,6 +159,13 @@
                         <div id="scoringProgressFill" class="scoring-progress-fill"></div>
                     </div>
                 </div>
+                    <div id="probeSuggestions" class="probe-suggestions" style="display: none;">
+                        <div class="probe-suggestions-top">
+                            <h4>Next Guess</h4>
+                            <div id="probeSuggestionsHint" class="probe-hint"></div>
+                        </div>
+                        <div id="probeSuggestionsList" class="probe-suggestions-list"></div>
+                    </div>
                     <div id="wordList" class="word-list"></div>
                 </div>
             </div>
@@ -260,7 +289,7 @@
                         </div>
                         <div class="filter-group">
                             <label class="toggle-label">
-                                <input type="checkbox" id="excludeGreenToggle">
+                                <input type="checkbox" id="excludeGreenToggle" checked>
                                 <span class="toggle-slider"></span>
                                 <span class="toggle-text">Exclude green letters</span>
                             </label>
@@ -274,7 +303,7 @@
                         </div>
                         <div class="filter-group">
                             <label class="toggle-label">
-                                <input type="checkbox" id="allowProbeToggle">
+                                <input type="checkbox" id="allowProbeToggle" checked>
                                 <span class="toggle-slider"></span>
                                 <span class="toggle-text">Allow non-candidate probes</span>
                             </label>
@@ -286,6 +315,7 @@
     </div>
 
     <script src="src/wordlist.js"></script>
+    <script src="src/wordlists-curated.js"></script>
     <script src="src/modern_word_frequency.js"></script>
     <script src="src/settings-manager.js"></script>
     <script src="src/script.js"></script>

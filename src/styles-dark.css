@@ -295,13 +295,13 @@ kbd {
 
 #grid.grid {
   display: grid;
-  grid-template-columns: repeat(5, var(--tile-size));
+  grid-template-columns: repeat(var(--board-cols, 5), var(--tile-size));
   gap: var(--gap);
 }
 
 .row-controls {
   display: grid;
-  grid-template-rows: repeat(6, var(--tile-size));
+  grid-template-rows: repeat(var(--board-rows, 6), var(--tile-size));
   gap: var(--gap);
   align-content: start;
 }
@@ -515,6 +515,54 @@ kbd {
   justify-content: space-between;
 }
 
+.mode-message {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(220, 53, 69, 0.35);
+  background: rgba(220, 53, 69, 0.14);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.mode-message.info {
+  border-color: rgba(100, 181, 246, 0.35);
+  background: rgba(100, 181, 246, 0.14);
+}
+
+.length-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.length-label {
+  color: var(--text-2);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 750;
+}
+
+.length-select {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-0);
+  font: inherit;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.length-select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
 button {
   font: inherit;
 }
@@ -678,6 +726,12 @@ button {
   letter-spacing: 0.22em;
   font-size: 0.92rem;
   color: var(--text-0);
+  overflow-wrap: anywhere;
+}
+
+.constraint-meta {
+  font-size: 0.92rem;
+  color: var(--text-1);
   overflow-wrap: anywhere;
 }
 
@@ -1490,7 +1544,7 @@ button {
 
 .position-inputs {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(var(--board-cols, 5), 1fr);
   gap: 10px;
 }
 
@@ -1551,4 +1605,79 @@ button {
   .scoring-spinner {
     animation: none;
   }
+}
+
+/* Probe suggestions */
+.probe-suggestions {
+  margin-top: 14px;
+  padding: 12px 12px 10px;
+  background: var(--panel-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.probe-suggestions-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.probe-suggestions h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-1);
+}
+
+.probe-hint {
+  font-size: 0.85rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.probe-suggestions-list {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.probe-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-0);
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: 0.08em;
+}
+
+.probe-chip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.probe-chip.recommended {
+  border-color: color-mix(in srgb, var(--tile-green) 65%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tile-green) 25%, transparent);
+}
+
+.probe-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
 }
