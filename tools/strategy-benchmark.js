@@ -5,8 +5,10 @@
  * Tests each strategy by simulating games for every possible answer,
  * always picking the #1 recommended word according to that strategy.
  * 
- * Usage: node strategy-benchmark.js [--fast] [--strategy=name]
+ * Usage: node strategy-benchmark.js [--fast] [--hard] [--strategy=name]
  *   --fast: Only test 100 random words (for quick iteration)
+ *   --tiny: Only test 20 random words (for quick testing)
+ *   --hard: Use hard mode (must use revealed hints)
  *   --strategy=name: Only test specific strategy
  */
 
@@ -85,6 +87,70 @@ function getPattern(guess, answer) {
 
 function filterByPattern(candidates, guess, pattern) {
     return candidates.filter(word => getPattern(guess, word) === pattern);
+}
+
+// Hard mode: filter valid guesses based on accumulated constraints
+function filterValidGuessesHardMode(guessPool, constraints) {
+    const { greens, yellows, grays } = constraints;
+    
+    return guessPool.filter(word => {
+        // Check greens: must have exact letter at exact position
+        for (const [pos, letter] of Object.entries(greens)) {
+            if (word[pos] !== letter) return false;
+        }
+        
+        // Check yellows: must contain letter, but NOT at the revealed position
+        for (const { letter, notAt } of yellows) {
+            if (!word.includes(letter)) return false;
+            // Letter can't be at any position it was yellow
+            for (const pos of notAt) {
+                if (word[pos] === letter) return false;
+            }
+        }
+        
+        // Check grays: must not contain letter (unless it's also green/yellow)
+        const requiredLetters = new Set([
+            ...Object.values(greens),
+            ...yellows.map(y => y.letter)
+        ]);
+        for (const letter of grays) {
+            if (!requiredLetters.has(letter) && word.includes(letter)) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
+}
+
+// Update constraints based on a guess and pattern
+function updateConstraints(constraints, guess, patternStr) {
+    const pattern = patternStr.split('').map(Number);
+    
+    for (let i = 0; i < 5; i++) {
+        const letter = guess[i];
+        if (pattern[i] === 2) {
+            // Green: exact position
+            constraints.greens[i] = letter;
+        } else if (pattern[i] === 1) {
+            // Yellow: letter exists but not here
+            let yellowEntry = constraints.yellows.find(y => y.letter === letter);
+            if (!yellowEntry) {
+                yellowEntry = { letter, notAt: [] };
+                constraints.yellows.push(yellowEntry);
+            }
+            if (!yellowEntry.notAt.includes(i)) {
+                yellowEntry.notAt.push(i);
+            }
+        } else {
+            // Gray: letter not in word (with caveats for duplicates)
+            if (!constraints.grays.has(letter)) {
+                constraints.grays.add(letter);
+            }
+        }
+    }
+    
+    return constraints;
 }
 
 // ============ SCORING STRATEGIES ============
@@ -208,15 +274,20 @@ function pickBestWord(candidates, guessPool, strategy, posTable) {
 
 // ============ GAME SIMULATION ============
 
-function playGame(answer, strategy, guessPool) {
+function playGame(answer, strategy, guessPool, hardMode = false) {
     let candidates = [...guessPool];
+    let validGuesses = [...guessPool]; // For hard mode
+    let constraints = { greens: {}, yellows: [], grays: new Set() };
     let guesses = 0;
     const maxGuesses = 6;
     
     while (guesses < maxGuesses) {
         guesses++;
         const posTable = buildPositionalFrequencyTable(candidates);
-        const guess = pickBestWord(candidates, guessPool, strategy, posTable);
+        
+        // In hard mode, pick from validGuesses; in normal mode, pick from candidates
+        const pickPool = hardMode ? validGuesses.filter(w => candidates.includes(w)) : candidates;
+        const guess = pickBestWord(pickPool.length > 0 ? pickPool : candidates, guessPool, strategy, posTable);
         
         if (!guess) {
             return { guesses: maxGuesses + 1, solved: false }; // Failed
@@ -229,6 +300,12 @@ function playGame(answer, strategy, guessPool) {
         const pattern = getPattern(guess, answer);
         candidates = filterByPattern(candidates, guess, pattern);
         
+        // Update hard mode constraints
+        if (hardMode) {
+            updateConstraints(constraints, guess, pattern);
+            validGuesses = filterValidGuessesHardMode(guessPool, constraints);
+        }
+        
         if (candidates.length === 0) {
             return { guesses: maxGuesses + 1, solved: false }; // Bug - shouldn't happen
         }
@@ -239,7 +316,7 @@ function playGame(answer, strategy, guessPool) {
 
 // ============ BENCHMARK ============
 
-function runBenchmark(strategy, answers, guessPool, verbose = false) {
+function runBenchmark(strategy, answers, guessPool, verbose = false, hardMode = false) {
     const results = {
         strategy,
         total: answers.length,
@@ -254,7 +331,7 @@ function runBenchmark(strategy, answers, guessPool, verbose = false) {
     
     for (let i = 0; i < answers.length; i++) {
         const answer = answers[i];
-        const { guesses, solved } = playGame(answer, strategy, guessPool);
+        const { guesses, solved } = playGame(answer, strategy, guessPool, hardMode);
         
         if (solved) {
             results.solved++;
@@ -330,11 +407,13 @@ async function main() {
     const args = process.argv.slice(2);
     const fast = args.includes('--fast');
     const tiny = args.includes('--tiny');
+    const hardMode = args.includes('--hard');
     const strategyArg = args.find(a => a.startsWith('--strategy='));
     const specificStrategy = strategyArg ? strategyArg.split('=')[1] : null;
     
     console.log('Wordle Strategy Benchmark');
     console.log('========================\n');
+    console.log(`Mode: ${hardMode ? 'HARD' : 'Normal'}`);
     console.log(`Word list: ${WORD_LIST.length} words`);
     
     let answers = [...WORD_LIST];
@@ -374,7 +453,7 @@ async function main() {
     
     for (const strategy of toRun) {
         console.log(`Running: ${strategy}...`);
-        const result = runBenchmark(strategy, answers, WORD_LIST, true);
+        const result = runBenchmark(strategy, answers, WORD_LIST, true, hardMode);
         allResults.push(result);
         console.log(`  Done: avg=${result.average}, failed=${result.failed}`);
     }
