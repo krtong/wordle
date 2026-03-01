@@ -20,6 +20,7 @@ from pathlib import Path
 
 
 RE_WORD = re.compile(r"^[a-z]+$")
+RE_ALPHA = re.compile(r"^[A-Za-z]+$")
 DEFAULT_DICT = Path("/usr/share/dict/words")
 LENGTHS = (3, 4, 5, 6, 7)
 
@@ -52,11 +53,14 @@ def read_dict_words(path: Path, length: int) -> list[str]:
             raw = line.strip()
             if len(raw) != length:
                 continue
-            # Only accept words that are already lowercase a-z
-            # (avoids proper nouns / titlecase entries like "April").
-            if not RE_WORD.match(raw):
+            # Include capitalized dictionary entries by lowercasing and deduping.
+            # (The word list strategy is controlled by what you feed into wordlists/*.txt;
+            # the /usr/share/dict fallback should not silently drop valid spellings.)
+            if not RE_ALPHA.match(raw):
                 continue
-            word = raw
+            word = raw.lower()
+            if not RE_WORD.match(word):
+                continue
             if word in seen:
                 continue
             seen.add(word)
@@ -124,8 +128,13 @@ def main() -> int:
 
     for L in LENGTHS:
         guesses = guess_lists.get(L, [])
-        if guesses:
-            lines.append(js_assign("GUESS_LISTS", L, guesses))
+        if not guesses:
+            continue
+        # 5-letter guesses default to the same pool as WORD_LISTS[5] (from src/wordlist.js),
+        # unless guesses-5.txt is explicitly provided.
+        if L == 5 and not (wordlists_dir / "guesses-5.txt").exists():
+            continue
+        lines.append(js_assign("GUESS_LISTS", L, guesses))
 
     for L in sorted(answer_lists.keys()):
         # Avoid overriding 5-letter answers unless explicitly provided via answers-5.txt.

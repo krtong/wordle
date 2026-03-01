@@ -11,7 +11,7 @@ Open `app/index.html` directly in your browser (no server required).
 
 The UI supports 3–7 letters.
 
-- 5-letter **answers** come from `src/wordlist.js`.
+- 5-letter **answers** (and default guess pool) come from `src/wordlist.js`.
 - 3/4/6/7 **answers + guess pools** come from `src/wordlists-curated.js` (generated).
 
 ## Regenerating wordlists
@@ -21,7 +21,8 @@ The UI supports 3–7 letters.
 
 ```sh
 cd app
+python3 tools/rebuild_wordlist_5.py
+python3 tools/rebuild_modern_word_frequency.py
 python3 tools/build_wordlists.py
 node tools/selftest_wordlists.js
 ```
-
