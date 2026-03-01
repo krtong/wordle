@@ -309,15 +309,10 @@
                             </label>
                         </div>
 
-                        <div class="filter-group">
-                            <label>Not valid in Wordle (<span id="invalidWordsCount">0</span>):</label>
-                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                                <input type="text" id="invalidWordInput" class="filter-input" placeholder="e.g., xylyl" maxlength="7">
-                                <button id="invalidWordAddBtn" class="small-btn">Add</button>
-                                <button id="invalidWordClearBtn" class="small-btn">Clear</button>
-                            </div>
-                            <div id="invalidWordsList" style="margin-top:8px;"></div>
-                        </div>
+	                        <div class="filter-group">
+	                            <label>Exclude letters (global):</label>
+	                            <input type="text" id="globalExcludeLetters" class="filter-input" placeholder="e.g., cegmp" maxlength="26">
+	                        </div>
                     </div>
                 </div>
             </div>

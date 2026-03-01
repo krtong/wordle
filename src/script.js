@@ -2056,9 +2056,10 @@ function analyzeBoard() {
     const completedGuessRows = getCompletedGuessRowsWithPatterns();
 
     // Get exclude and include letters from filter inputs
-    const excludeInput = document.getElementById('excludeLetters').value.toLowerCase().trim();
-    const includeInput = document.getElementById('includeLetters').value.toLowerCase().trim();
-    const excludeLetters = new Set(excludeInput.split('').filter(c => c.match(/[a-z]/)));
+    const excludeInput = (document.getElementById('excludeLetters')?.value || '').toLowerCase().trim();
+    const globalExcludeInput = (document.getElementById('globalExcludeLetters')?.value || '').toLowerCase().trim();
+    const includeInput = (document.getElementById('includeLetters')?.value || '').toLowerCase().trim();
+    const excludeLetters = new Set((excludeInput + globalExcludeInput).split('').filter(c => c.match(/[a-z]/)));
     const includeLetters = new Set(includeInput.split('').filter(c => c.match(/[a-z]/)));
 
     const excludedOverridesWordle = Array.from(excludeLetters).some(l => {
@@ -2095,6 +2096,13 @@ function analyzeBoard() {
     
     // Filter words based on the board state and letter filters
     const newFilteredWords = answerList.filter(word => {
+        // Global excluded letters apply in both whole-word and per-position modes.
+        for (let letter of excludeLetters) {
+            if (word.includes(letter)) {
+                return false;
+            }
+        }
+
         // Apply per-position filters (from Letter Filter widget)
         if (perPositionMode) {
             // Per-position mode: check each position individually
@@ -2115,13 +2123,6 @@ function analyzeBoard() {
             }
         } else {
             // Whole word mode (original behavior)
-            // Check excluded letters from filter (highest priority for actual exclusion)
-            for (let letter of excludeLetters) {
-                if (word.includes(letter)) {
-                    return false;  // Exclude this word if it contains any excluded letter
-                }
-            }
-
             // Check included letters from filter (must be in word)
             for (let letter of includeLetters) {
                 if (!word.includes(letter)) {
@@ -4258,6 +4259,8 @@ function clearAll() {
     // Clear filter inputs
     document.getElementById('excludeLetters').value = '';
     document.getElementById('includeLetters').value = '';
+    const globalExclude = document.getElementById('globalExcludeLetters');
+    if (globalExclude) globalExclude.value = '';
 
     // Clear per-position filter inputs
     document.querySelectorAll('.position-input').forEach(input => {
@@ -4691,6 +4694,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const includeInput = document.getElementById('includeLetters');
             if (excludeInput) excludeInput.value = '';
             if (includeInput) includeInput.value = '';
+            const globalExclude = document.getElementById('globalExcludeLetters');
+            if (globalExclude) globalExclude.value = '';
 
             clearModeMessage();
             setCssBoardDims();
@@ -4763,6 +4768,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add letter filter handlers
     const excludeInput = document.getElementById('excludeLetters');
     const includeInput = document.getElementById('includeLetters');
+    const globalExcludeInput = document.getElementById('globalExcludeLetters');
     
     excludeInput.addEventListener('input', () => {
         analyzeBoard();
@@ -4771,6 +4777,12 @@ document.addEventListener('DOMContentLoaded', () => {
     includeInput.addEventListener('input', () => {
         analyzeBoard();
     });
+
+    if (globalExcludeInput) {
+        globalExcludeInput.addEventListener('input', () => {
+            analyzeBoard();
+        });
+    }
     
     document.getElementById('clearExclude').addEventListener('click', () => {
         excludeInput.value = '';
@@ -4817,6 +4829,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('excludeLetters').value = '';
         document.getElementById('includeLetters').value = '';
+        const globalExclude = document.getElementById('globalExcludeLetters');
+        if (globalExclude) globalExclude.value = '';
         analyzeBoard();
     });
 
