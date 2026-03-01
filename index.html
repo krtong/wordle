@@ -8,7 +8,7 @@
 </head>
 <body>
     <div class="container layout-classic">
-        <h1>Wordle Helper</h1>
+        <h1>Wordle Helper <a href="v2/index.html" style="font-size: 0.5em; font-weight: 400; opacity: 0.6; text-decoration: none; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 2px 10px; margin-left: 8px; vertical-align: middle;">Try v2</a></h1>
 
         <div class="game-board">
             <div class="grid-panel">
@@ -307,6 +307,45 @@
                                 <span class="toggle-slider"></span>
                                 <span class="toggle-text">Allow non-candidate probes</span>
                             </label>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Not valid in Wordle (<span id="invalidWordsCount">0</span>):</label>
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                <input type="text" id="invalidWordInput" class="filter-input" placeholder="e.g., xylyl" maxlength="7">
+                                <button id="invalidWordAddBtn" class="small-btn">Add</button>
+                                <button id="invalidWordClearBtn" class="small-btn">Clear</button>
+                            </div>
+                            <div id="invalidWordsList" style="margin-top:8px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget-section draggable collapsed" data-widget="invalid-words">
+                <div class="widget-header">
+                    <h3>Not Allowed Words (<span id="invalidWordsCountWidget">0</span>)</h3>
+                    <div class="widget-controls">
+                        <button class="drag-handle">☰</button>
+                        <button class="collapse-btn">▸</button>
+                    </div>
+                </div>
+                <div class="widget-content">
+                    <div class="filter-controls">
+                        <div class="filter-group">
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                <button id="invalidWordsCopyBtn" class="small-btn">Copy</button>
+                                <button id="invalidWordsClearBtn" class="small-btn">Clear</button>
+                                <span id="invalidWordsWidgetStatus" style="opacity:0.8; font-size:12px;"></span>
+                            </div>
+                            <textarea id="invalidWordsTextarea" class="invalid-words-textarea" readonly placeholder="(empty)"></textarea>
+                        </div>
+                        <div class="filter-group">
+                            <label>Remove (paste words):</label>
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                <textarea id="invalidWordsBulkRemove" class="invalid-words-textarea" placeholder="e.g.\nXYLYL\nABCD\n…"></textarea>
+                                <button id="invalidWordsBulkRemoveBtn" class="small-btn">Remove</button>
+                            </div>
                         </div>
                     </div>
                 </div>

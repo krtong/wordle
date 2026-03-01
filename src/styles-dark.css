@@ -1066,8 +1066,11 @@ button {
 }
 
 .word-action {
-  width: 90px;
-  text-align: right;
+  width: 140px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: center;
 }
 
 .word-text {
@@ -1119,6 +1122,23 @@ button {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.22);
+}
+
+.invalid-word-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-0);
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.invalid-word-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(220, 53, 69, 0.18);
+  border-color: rgba(220, 53, 69, 0.45);
 }
 
 /* Frequency widget */
@@ -1538,6 +1558,26 @@ button {
 }
 
 .filter-input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.invalid-words-textarea {
+  width: 100%;
+  min-height: 120px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-0);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: pre;
+}
+
+.invalid-words-textarea:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }

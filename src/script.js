@@ -1,5 +1,7 @@
 let answerList = [];
 let guessList = [];
+let baseAnswerList = [];
+let baseGuessList = [];
 let filteredWords = [];
 let filteredWordsVersion = 0;
 let currentTile = null;
@@ -20,6 +22,15 @@ let artWordList = []; // Always 5-letter list for art tools
 let patternLibraryDebounceTimer = null;
 let analyzeBoardScheduled = false;
 
+const INVALID_WORDS_STORAGE_KEY = 'invalidWords';
+let invalidWordSet = new Set();
+
+// Row confirmations prevent "typed but not yet colored" rows from constraining candidates.
+// A row is considered confirmed when:
+// - the user explicitly marks any tile's feedback (1/2/3, Tab, shift-click, tap-cycle), OR
+// - the user presses Enter on a completed row (to confirm an all-gray result).
+let confirmedRowWords = [];
+
 function scheduleAnalyzeBoard() {
     if (analyzeBoardScheduled) return;
     analyzeBoardScheduled = true;
@@ -33,6 +44,10 @@ const BOARD_ROWS = 6;
 const WORD_LENGTH_MIN = 3;
 const WORD_LENGTH_MAX = 7;
 let WORD_LENGTH = 5;
+
+if (!confirmedRowWords.length) {
+    confirmedRowWords = Array.from({ length: BOARD_ROWS }, () => null);
+}
 
 function boardRows() {
     return BOARD_ROWS;
@@ -48,6 +63,215 @@ function boardTileIndex(row, col) {
 
 function boardTileCount() {
     return boardRows() * boardCols();
+}
+
+function normalizeCandidateWord(word) {
+    if (typeof word !== 'string') return '';
+    const normalized = word.toLowerCase().trim();
+    if (!normalized || !/^[a-z]+$/.test(normalized)) return '';
+    return normalized;
+}
+
+function loadInvalidWordsFromStorage() {
+    invalidWordSet = new Set();
+    try {
+        const raw = localStorage.getItem(INVALID_WORDS_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return;
+        for (const entry of parsed) {
+            const normalized = normalizeCandidateWord(entry);
+            if (normalized) invalidWordSet.add(normalized);
+        }
+    } catch {
+        // Ignore corrupt storage.
+    }
+}
+
+function saveInvalidWordsToStorage() {
+    try {
+        const list = Array.from(invalidWordSet).sort();
+        localStorage.setItem(INVALID_WORDS_STORAGE_KEY, JSON.stringify(list));
+    } catch {
+        // Ignore storage failures.
+    }
+}
+
+function isWordInvalidForWordle(word) {
+    const normalized = normalizeCandidateWord(word);
+    return normalized ? invalidWordSet.has(normalized) : false;
+}
+
+function applyInvalidWordFilterToLists() {
+    if (Array.isArray(baseAnswerList) && baseAnswerList.length) {
+        answerList = baseAnswerList.filter(w => !invalidWordSet.has(w));
+    }
+    if (Array.isArray(baseGuessList) && baseGuessList.length) {
+        guessList = baseGuessList.filter(w => !invalidWordSet.has(w));
+    }
+    if (!guessList.length && Array.isArray(answerList) && answerList.length) {
+        guessList = [...answerList];
+    }
+    updateListCountsUI();
+}
+
+function addInvalidWord(word) {
+    const normalized = normalizeCandidateWord(word);
+    if (!normalized) return false;
+    if (invalidWordSet.has(normalized)) return false;
+    invalidWordSet.add(normalized);
+    saveInvalidWordsToStorage();
+    applyInvalidWordFilterToLists();
+    analyzeBoard();
+    renderInvalidWordsUI();
+    return true;
+}
+
+function removeInvalidWord(word) {
+    const normalized = normalizeCandidateWord(word);
+    if (!normalized) return false;
+    if (!invalidWordSet.delete(normalized)) return false;
+    saveInvalidWordsToStorage();
+    applyInvalidWordFilterToLists();
+    analyzeBoard();
+    renderInvalidWordsUI();
+    return true;
+}
+
+function clearAllInvalidWords() {
+    if (!invalidWordSet.size) return;
+    invalidWordSet.clear();
+    saveInvalidWordsToStorage();
+    applyInvalidWordFilterToLists();
+    analyzeBoard();
+    renderInvalidWordsUI();
+}
+
+function removeInvalidWordsBulk(words) {
+    if (!Array.isArray(words) || words.length === 0) return 0;
+    let removed = 0;
+    for (const w of words) {
+        const normalized = normalizeCandidateWord(w);
+        if (!normalized) continue;
+        if (invalidWordSet.delete(normalized)) removed += 1;
+    }
+    if (!removed) return 0;
+    saveInvalidWordsToStorage();
+    applyInvalidWordFilterToLists();
+    analyzeBoard();
+    renderInvalidWordsUI();
+    return removed;
+}
+
+function invalidWordsText() {
+    if (!invalidWordSet.size) return '';
+    return Array.from(invalidWordSet).sort().join('\n');
+}
+
+function renderInvalidWordsUI() {
+    const listEl = document.getElementById('invalidWordsList');
+    const countEl = document.getElementById('invalidWordsCount');
+    const countWidgetEl = document.getElementById('invalidWordsCountWidget');
+    const textareaEl = document.getElementById('invalidWordsTextarea');
+    if (countEl) {
+        countEl.textContent = invalidWordSet.size ? String(invalidWordSet.size) : '0';
+    }
+    if (countWidgetEl) {
+        countWidgetEl.textContent = invalidWordSet.size ? String(invalidWordSet.size) : '0';
+    }
+    if (textareaEl) {
+        textareaEl.value = invalidWordsText();
+    }
+    if (!listEl) return;
+
+    if (!invalidWordSet.size) {
+        listEl.innerHTML = '<span style="opacity:0.7;">—</span>';
+        return;
+    }
+
+    const words = Array.from(invalidWordSet).sort();
+    const renderLimit = 60;
+    const shown = words.slice(0, renderLimit);
+    const truncated = words.length > renderLimit;
+
+    listEl.innerHTML = `
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+            ${shown.map(w => `<button class="small-btn invalid-word-chip" data-word="${w}" title="Remove">${w.toUpperCase()} ×</button>`).join('')}
+            ${truncated ? `<span style="opacity:0.75; font-size:12px;">+${words.length - renderLimit} more</span>` : ''}
+        </div>
+    `;
+
+    listEl.querySelectorAll('.invalid-word-chip').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const w = btn.dataset.word;
+            if (w) removeInvalidWord(w);
+        });
+    });
+}
+
+function getRowWordIfComplete(row) {
+    const L = boardCols();
+    const start = row * L;
+    let w = '';
+    for (let col = 0; col < L; col++) {
+        const ch = tiles[start + col]?.textContent?.toLowerCase?.().trim?.() || '';
+        if (!/^[a-z]$/.test(ch)) return null;
+        w += ch;
+    }
+    return w;
+}
+
+function clearRowConfirmation(row) {
+    if (row >= 0 && row < confirmedRowWords.length) {
+        confirmedRowWords[row] = null;
+    }
+}
+
+function clearRowFeedbackFlags(row) {
+    const L = boardCols();
+    const start = row * L;
+    for (let col = 0; col < L; col++) {
+        const tile = tiles[start + col];
+        if (!tile) continue;
+        delete tile.dataset.manualState;
+        delete tile.dataset.autoColored;
+    }
+}
+
+function confirmRowIfComplete(row) {
+    const w = getRowWordIfComplete(row);
+    if (!w) return false;
+    confirmedRowWords[row] = w;
+    return true;
+}
+
+function isRowConfirmed(row) {
+    const w = getRowWordIfComplete(row);
+    if (!w) return false;
+    return confirmedRowWords[row] === w;
+}
+
+function rowHasAnyFeedbackFlags(row) {
+    const L = boardCols();
+    const start = row * L;
+    for (let col = 0; col < L; col++) {
+        const tile = tiles[start + col];
+        if (!tile) continue;
+        if (tile.dataset.autoColored === 'true') return true;
+        if (tile.dataset.manualState) return true;
+    }
+    return false;
+}
+
+function autoConfirmRowsFromFeedbackFlags() {
+    for (let row = 0; row < boardRows(); row++) {
+        if (isRowConfirmed(row)) continue;
+        const w = getRowWordIfComplete(row);
+        if (!w) continue;
+        if (!rowHasAnyFeedbackFlags(row)) continue;
+        confirmedRowWords[row] = w;
+    }
 }
 
 function setCssBoardDims() {
@@ -511,8 +735,10 @@ function loadWords() {
     const rawAnswers = getRawAnswerListForLength(WORD_LENGTH);
     const rawGuesses = getRawGuessListForLength(WORD_LENGTH);
     if (Array.isArray(rawAnswers)) {
-        answerList = normalizeWordArray(rawAnswers, WORD_LENGTH);
-        guessList = normalizeWordArray(rawGuesses || rawAnswers, WORD_LENGTH);
+        baseAnswerList = normalizeWordArray(rawAnswers, WORD_LENGTH);
+        baseGuessList = normalizeWordArray(rawGuesses || rawAnswers, WORD_LENGTH);
+        answerList = baseAnswerList.filter(w => !invalidWordSet.has(w));
+        guessList = baseGuessList.filter(w => !invalidWordSet.has(w));
         if (!guessList.length) guessList = [...answerList];
 
         setFilteredWords([...answerList]);
@@ -566,6 +792,7 @@ function createGrid() {
     grid.innerHTML = '';
     rowControls.innerHTML = '';
     tiles = [];
+    confirmedRowWords = Array.from({ length: boardRows() }, () => null);
     setCssBoardDims();
 
     // Create trash buttons for each row
@@ -655,6 +882,8 @@ function createGrid() {
                 if (e.ctrlKey || e.metaKey) {
                     // Ctrl/Cmd-click clears the tile (makes it blank and gray)
                     e.preventDefault();
+                    clearRowConfirmation(row);
+                    clearRowFeedbackFlags(row);
                     tile.textContent = '';
                     tile.classList.remove('yellow', 'green');
                     tile.classList.add('gray');
@@ -1108,6 +1337,7 @@ function handleKeyDown(e, tile) {
     const col = index % boardCols();
     const lastIndex = boardTileCount() - 1;
     const lastCol = boardCols() - 1;
+    const row = Math.floor(index / boardCols());
 
     if (e.key === 'Tab') {
         e.preventDefault();
@@ -1119,6 +1349,9 @@ function handleKeyDown(e, tile) {
             tile.classList.remove('yellow', 'green');
             tile.classList.add('gray');
             tile.dataset.state = STATES.GRAY;
+            tile.dataset.manualState = STATES.GRAY;
+            delete tile.dataset.autoColored;
+            confirmRowIfComplete(row);
             filterWords();
             updateGhostHints();
         }
@@ -1129,6 +1362,9 @@ function handleKeyDown(e, tile) {
             tile.classList.remove('gray', 'green');
             tile.classList.add('yellow');
             tile.dataset.state = STATES.YELLOW;
+            tile.dataset.manualState = STATES.YELLOW;
+            delete tile.dataset.autoColored;
+            confirmRowIfComplete(row);
             filterWords();
             updateGhostHints();
         }
@@ -1139,6 +1375,9 @@ function handleKeyDown(e, tile) {
             tile.classList.remove('gray', 'yellow');
             tile.classList.add('green');
             tile.dataset.state = STATES.GREEN;
+            tile.dataset.manualState = STATES.GREEN;
+            delete tile.dataset.autoColored;
+            confirmRowIfComplete(row);
             filterWords();
             updateGhostHints();
         }
@@ -1150,6 +1389,8 @@ function handleKeyDown(e, tile) {
         }
     } else if (e.key === 'Enter') {
         e.preventDefault();
+        // Confirm this row's feedback (useful for an all-gray result).
+        confirmRowIfComplete(row);
         // If at the last column of a row, move to next row
         if (col === lastCol && index < lastIndex) {
             tiles[index + 1].focus();
@@ -1157,6 +1398,8 @@ function handleKeyDown(e, tile) {
         analyzeBoard();
         } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
+        clearRowConfirmation(row);
+        clearRowFeedbackFlags(row);
         if (tile.textContent === '') {
             // Move to previous tile if current is empty and delete it
             if (index > 0) {
@@ -1212,6 +1455,8 @@ function handlePasteIntoTile(e, tile) {
 
     const startIdx = Math.floor(parseInt(tile.tabIndex, 10) / boardCols()) * boardCols();
     const rowIndex = Math.floor(startIdx / boardCols());
+    clearRowConfirmation(rowIndex);
+    clearRowFeedbackFlags(rowIndex);
 
     for (let i = 0; i < boardCols() && i < text.length; i++) {
         const t = tiles[startIdx + i];
@@ -1250,6 +1495,11 @@ function handleInput(e, tile) {
     
     const oldLetter = tile.textContent;
     tile.textContent = newLetter;
+    if (oldLetter !== newLetter) {
+        const rowIndex = Math.floor(index / boardCols());
+        clearRowConfirmation(rowIndex);
+        clearRowFeedbackFlags(rowIndex);
+    }
 
     if (newLetter) {
         tile.dataset.manualEntry = 'true';
@@ -1436,6 +1686,8 @@ function applyColorsToRow(rowIndex, correctWord) {
         tile.dataset.state = STATES[tileStates[col].toUpperCase()];
         tile.dataset.autoColored = 'true'; // Mark as auto-colored by answer
     }
+
+    confirmRowIfComplete(rowIndex);
 }
 
 function updateTileTooltip(tile, state) {
@@ -1504,6 +1756,9 @@ function cycleState(tile) {
     // Save this as the manual state and clear auto-colored flag
     tile.dataset.manualState = newState;
     delete tile.dataset.autoColored;
+
+    // User explicitly set feedback in this row; treat it as confirmed once complete.
+    confirmRowIfComplete(row);
     
     const col = parseInt(tile.dataset.col);
     // row is already declared above at line 319
@@ -1609,6 +1864,8 @@ function updateConstraintsDigest() {
     const greenInfo = {}; // position -> letter
 
     tiles.forEach((tile, index) => {
+        const row = Math.floor(index / boardCols());
+        if (!isRowConfirmed(row)) return;
         const letter = tile.textContent.toLowerCase();
         const state = tile.dataset.state;
         const position = index % boardCols();
@@ -1655,6 +1912,8 @@ function getWordleConstraintsFromBoard() {
     const mustInclude = new Set(); // Letters that must be in the word (from yellow)
 
     tiles.forEach((tile, index) => {
+        const row = Math.floor(index / boardCols());
+        if (!isRowConfirmed(row)) return;
         const letter = tile.textContent.toLowerCase();
         const state = tile.dataset.state;
         const position = index % boardCols();
@@ -1791,6 +2050,7 @@ function validateHardModeGuess(guess, constraints) {
 }
 
 function analyzeBoard() {
+    autoConfirmRowsFromFeedbackFlags();
     updateConstraintsDigest();
     const { grayLetters, greenPositions, yellowInfo, mustInclude } = getWordleConstraintsFromBoard();
     const completedGuessRows = getCompletedGuessRowsWithPatterns();
@@ -2555,6 +2815,8 @@ function getBoardLetterSets() {
     const greenPositions = {}; // position -> letter
 
     tiles.forEach((tile, index) => {
+        const row = Math.floor(index / boardCols());
+        if (!isRowConfirmed(row)) return;
         const letter = tile.textContent.toLowerCase();
         const state = tile.dataset.state;
         const position = index % boardCols();
@@ -2582,6 +2844,7 @@ function getBoardLetterSets() {
 function getCompletedGuesses() {
     const guessed = new Set();
     for (let row = 0; row < boardRows(); row++) {
+        if (!isRowConfirmed(row)) continue;
         const startIndex = row * boardCols();
         let w = '';
         for (let col = 0; col < boardCols(); col++) {
@@ -2605,6 +2868,7 @@ function getCompletedGuessRowsWithPatterns() {
     const rows = [];
     const L = boardCols();
     for (let row = 0; row < boardRows(); row++) {
+        if (!isRowConfirmed(row)) continue;
         const startIndex = row * L;
         let guess = '';
         let pattern = '';
@@ -3319,6 +3583,8 @@ function displayWords(scoredWords) {
     
     // Analyze the board to determine letter colors
     tiles.forEach((tile, index) => {
+        const row = Math.floor(index / boardCols());
+        if (!isRowConfirmed(row)) return;
         const letter = tile.textContent.toLowerCase();
         const state = tile.dataset.state;
         const position = index % boardCols();
@@ -3426,7 +3692,10 @@ function displayWords(scoredWords) {
             <td class="word-rank">${index + 1}</td>
             <td class="word-text">${coloredWord}</td>
             <td class="word-score-cell">${displayScore}</td>
-            <td class="word-action"><button class="use-word-btn" data-word="${word}">Use</button></td>
+            <td class="word-action">
+                <button class="use-word-btn" data-word="${word}">Use</button>
+                <button class="invalid-word-btn" data-word="${word}" title="Mark as not valid in Wordle">🚫</button>
+            </td>
         </tr>`;
     }).join('');
 
@@ -3814,6 +4083,8 @@ function fillNextAvailableRow(word) {
         
         if (canUseRow) {
             console.log(`Filling row ${row + 1} with "${normalized.toUpperCase()}"`);
+            clearRowConfirmation(row);
+            clearRowFeedbackFlags(row);
             
             for (let col = 0; col < boardCols(); col++) {
                 const tile = tiles[startIndex + col];
@@ -3949,6 +4220,7 @@ function toggleAutofillGreen(enabled) {
 }
 
 function clearRow(rowIndex) {
+    clearRowConfirmation(rowIndex);
     for (let col = 0; col < boardCols(); col++) {
         const tile = tiles[boardTileIndex(rowIndex, col)];
         tile.textContent = '';
@@ -3969,6 +4241,7 @@ function clearRow(rowIndex) {
 }
 
 function clearAll() {
+    confirmedRowWords = Array.from({ length: boardRows() }, () => null);
     tiles.forEach(tile => {
         tile.textContent = '';
         tile.dataset.state = STATES.GRAY;
@@ -4098,6 +4371,7 @@ function applyAnswerToGrid() {
 // Widget management functions
 function initializeWidgets() {
     const container = document.getElementById('widgetsContainer');
+    if (!container) return;
     const widgets = container.querySelectorAll('.widget-section');
     let draggedElement = null;
     
@@ -4158,6 +4432,7 @@ function initializeWidgets() {
 
 function saveWidgetPreferences() {
     const container = document.getElementById('widgetsContainer');
+    if (!container) return;
     const widgets = container.querySelectorAll('.widget-section');
     const prefs = {
         order: Array.from(widgets).map(w => w.dataset.widget),
@@ -4170,6 +4445,7 @@ function saveWidgetPreferences() {
 function loadWidgetPreferences() {
     const saved = localStorage.getItem('wordleWidgetPrefs');
     const container = document.getElementById('widgetsContainer');
+    if (!container) return;
 
     if (!saved) {
         // No saved preferences - apply defaults.
@@ -4247,6 +4523,103 @@ document.addEventListener('DOMContentLoaded', () => {
         SettingsManager.init();
     }
 
+    loadInvalidWordsFromStorage();
+    renderInvalidWordsUI();
+
+    const invalidInput = document.getElementById('invalidWordInput');
+    const invalidAddBtn = document.getElementById('invalidWordAddBtn');
+    const invalidClearBtn = document.getElementById('invalidWordClearBtn');
+    if (invalidInput) {
+        invalidInput.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            if (addInvalidWord(invalidInput.value)) invalidInput.value = '';
+        });
+    }
+    if (invalidAddBtn && invalidInput) {
+        invalidAddBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (addInvalidWord(invalidInput.value)) invalidInput.value = '';
+        });
+    }
+    if (invalidClearBtn) {
+        invalidClearBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearAllInvalidWords();
+        });
+    }
+
+    const invalidCopyBtn = document.getElementById('invalidWordsCopyBtn');
+    const invalidClearWidgetBtn = document.getElementById('invalidWordsClearBtn');
+    const invalidStatusEl = document.getElementById('invalidWordsWidgetStatus');
+    const bulkRemoveEl = document.getElementById('invalidWordsBulkRemove');
+    const bulkRemoveBtn = document.getElementById('invalidWordsBulkRemoveBtn');
+
+    async function copyInvalidWordsToClipboard() {
+        const text = invalidWordsText();
+        if (!text) {
+            if (invalidStatusEl) invalidStatusEl.textContent = 'Nothing to copy';
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            if (invalidStatusEl) invalidStatusEl.textContent = `Copied ${invalidWordSet.size}`;
+        } catch {
+            // Fallback: select textarea content for manual copy.
+            const ta = document.getElementById('invalidWordsTextarea');
+            if (ta && typeof ta.select === 'function') {
+                ta.focus();
+                ta.select();
+                if (invalidStatusEl) invalidStatusEl.textContent = 'Select + copy';
+            }
+        }
+        if (invalidStatusEl) {
+            setTimeout(() => {
+                if (invalidStatusEl.textContent) invalidStatusEl.textContent = '';
+            }, 2000);
+        }
+    }
+
+    function parseBulkWords(text) {
+        if (typeof text !== 'string') return [];
+        const matches = text.toLowerCase().match(/[a-z]+/g) || [];
+        const unique = new Set();
+        const out = [];
+        for (const m of matches) {
+            const w = normalizeCandidateWord(m);
+            if (!w) continue;
+            if (unique.has(w)) continue;
+            unique.add(w);
+            out.push(w);
+        }
+        return out;
+    }
+
+    if (invalidCopyBtn) {
+        invalidCopyBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            copyInvalidWordsToClipboard();
+        });
+    }
+    if (invalidClearWidgetBtn) {
+        invalidClearWidgetBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearAllInvalidWords();
+            if (invalidStatusEl) invalidStatusEl.textContent = 'Cleared';
+            if (invalidStatusEl) setTimeout(() => (invalidStatusEl.textContent = ''), 1200);
+        });
+    }
+    if (bulkRemoveBtn && bulkRemoveEl) {
+        bulkRemoveBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const words = parseBulkWords(bulkRemoveEl.value);
+            const removed = removeInvalidWordsBulk(words);
+            bulkRemoveEl.value = '';
+            if (invalidStatusEl) invalidStatusEl.textContent = removed ? `Removed ${removed}` : 'No matches';
+            if (invalidStatusEl) setTimeout(() => (invalidStatusEl.textContent = ''), 1800);
+        });
+    }
+
     const modeSelect = document.getElementById('solveModeSelect');
     const savedMode = localStorage.getItem('solveMode');
     solveMode = savedMode === 'hard' ? 'hard' : 'normal';
@@ -4257,13 +4630,23 @@ document.addEventListener('DOMContentLoaded', () => {
     autofillGreenEnabled = document.getElementById('autofillToggle').checked;
     allowProbeGuesses = document.getElementById('allowProbeToggle').checked;
 
-    // Event delegation for word list "Use" buttons (instead of per-button handlers)
-    document.getElementById('wordList').addEventListener('click', (e) => {
-        const btn = e.target.closest('.use-word-btn');
-        if (!btn) return;
-        e.stopPropagation();
-        fillNextAvailableRow(btn.dataset.word);
-    });
+    // Event delegation for word list actions (instead of per-button handlers)
+    const wordListEl = document.getElementById('wordList');
+    if (wordListEl) {
+        wordListEl.addEventListener('click', (e) => {
+            const invalidBtn = e.target.closest('.invalid-word-btn');
+            if (invalidBtn) {
+                e.stopPropagation();
+                const w = invalidBtn.dataset.word;
+                if (w) addInvalidWord(w);
+                return;
+            }
+            const useBtn = e.target.closest('.use-word-btn');
+            if (!useBtn) return;
+            e.stopPropagation();
+            fillNextAvailableRow(useBtn.dataset.word);
+        });
+    }
 
     function syncSolveModeUi() {
         const hard = solveMode === 'hard';
