@@ -8716,12 +8716,12 @@ const WORD_LIST = [
 
 // Provide a consistent multi-length hook for the UI (3/4/5/6/7).
 // Extra lists can be added by defining `window.WORD_LISTS[length] = [...]` in additional scripts.
-if (typeof window \!== 'undefined') {
+if (typeof window !== 'undefined') {
   window.WORD_LISTS = window.WORD_LISTS || {};
   window.GUESS_LISTS = window.GUESS_LISTS || {};
   window.WORD_LISTS[5] = WORD_LIST;
   // Default guess pool: answers only (can be overridden by separate guess lists).
-  if (\!Array.isArray(window.GUESS_LISTS[5])) {
+  if (!Array.isArray(window.GUESS_LISTS[5])) {
     window.GUESS_LISTS[5] = WORD_LIST;
   }
 }
